@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
-import javax.servlet.http.HttpSession;
 
 @Slf4j
 @RestController
@@ -25,13 +24,13 @@ public class UserController {
     private IUserInfoService userInfoService;
 
     @PostMapping("code")
-    public Result sendCode(@RequestParam("phone") String phone, HttpSession session) {
-        return userService.sendcode(phone, session);
+    public Result sendCode(@RequestParam("phone") String phone) {
+        return userService.sendcode(phone);
     }
 
     @PostMapping("/login")
-    public Result login(@RequestBody LoginFormDTO loginForm, HttpSession session) {
-        return userService.login(loginForm, session);
+    public Result login(@RequestBody LoginFormDTO loginForm) {
+        return userService.login(loginForm);
     }
 
     @PostMapping("/logout")
