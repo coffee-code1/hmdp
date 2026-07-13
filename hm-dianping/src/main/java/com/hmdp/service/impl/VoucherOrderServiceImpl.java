@@ -54,8 +54,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         if(voucher.getStock() < 1){
             return Result.fail("库存见底");
         }
-        Long userid = UserHolder.getUser().getId();
         //单系统锁
+//        Long userid = UserHolder.getUser().getId();
 //        synchronized (userid.toString().intern()){
 //            IVoucherOrderService proxy =(IVoucherOrderService) AopContext.currentProxy();
 //            return proxy.createVoucherOrder(id);
@@ -63,7 +63,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         //分布式锁
         Long userId = UserHolder.getUser().getId();
        SimpleRedisLock simplelock = new SimpleRedisLock(stringRedisTemplate,"Order:"+userId);
-       boolean success = simplelock.tryLock(12000L);
+       boolean success = simplelock.tryLock(12000L);//ttl时间
        if(!success){
            return Result.fail("一人只能下一单");
        }
