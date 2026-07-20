@@ -12,19 +12,21 @@ import com.hmdp.entity.User;
 import com.hmdp.mapper.UserMapper;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.RegexUtils;
+import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static com.hmdp.utils.RedisConstants.LOGIN_CODE_KEY;
-import static com.hmdp.utils.RedisConstants.LOGIN_CODE_TTL;
-import static com.hmdp.utils.RedisConstants.LOGIN_USER_KEY;
-import static com.hmdp.utils.RedisConstants.LOGIN_USER_TTL;
+import static com.hmdp.utils.RedisConstants.*;
 import static com.hmdp.utils.SystemConstants.USER_NICK_NAME_PREFIX;
 
 @Service
@@ -89,6 +91,58 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         return Result.ok(token);
     }
 
+    @Override
+    public Result sign(){
+        //获取用户id
+        Long id = UserHolder.getUser().getId();
+        LocalDateTime time = LocalDateTime.now();
+        String keySuffix = time.format(DateTimeFormatter.ofPattern(":YYYYMM"));
+        //key的形式为 sign:id:20233
+        String key = USER_SIGN_KEY + id + keySuffix;
+        //存入bitMap
+        //当前日期号
+        int day = time.getDayOfMonth();
+        //这里的下标从一开始所以减一
+        stringRedisTemplate.opsForValue().setBit(key,day-1,true);
+        return Result.ok();
+    }
+
+    @Override
+    public Result signCount(){
+        //获取用户id
+        Long id = UserHolder.getUser().getId();
+        LocalDateTime time = LocalDateTime.now();
+        String keySuffix = time.format(DateTimeFormatter.ofPattern(":YYYYMM"));
+        //key的形式为 sign:id:20233
+        String key = USER_SIGN_KEY + id + keySuffix;
+        //存入bitMap
+        //当前日期号
+        int day = time.getDayOfMonth();
+        //获取截止到今天所有签到记录
+        List<Long> longs = stringRedisTemplate.opsForValue().bitField(key,
+                BitFieldSubCommands.create()
+                        .get(BitFieldSubCommands.BitFieldType.unsigned(day)).valueAt(0)
+        );
+        if(longs == null || longs.isEmpty()){
+            //没有结果
+            return Result.fail("没有抽签结果");
+        }
+        Long num = longs.get(0);
+        if(num == 0|| num == null){
+            return Result.ok(0);
+        }
+        int count = 0;
+        while(true){
+            //为0表示没签到
+            if((num & 1) == 0){
+                break;
+            }else{
+                count++;
+            }
+            num = num>>1;
+        }
+        return Result.ok(count);
+    }
     private User createUser(String phone) {
         User user = new User();
         user.setPhone(phone);
